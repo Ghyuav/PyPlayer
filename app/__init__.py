@@ -51,7 +51,7 @@ def player_load(filename):
                 img_data = p.data
             else:
                 img_data = ''
-        length = audio.info.length
+        length = audio.info.length 
         return [title, artist, album,img_data,length]
     elif filename.split('.')[-1] == 'wav' or filename.split('.')[-1] == 'WAV':
         
