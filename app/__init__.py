@@ -14,15 +14,15 @@ def player_load(filename):
         try:
             title = audio['TIT2'].text[0]
         except:
-            title = ''
+            title = filename.split('/')[-1].split('.')[0]
         try:
             album = audio['TALB'].text[0]
         except:
-            album = ''
+            album = 'unknow'
         try:
             artist = audio['TPE1'].text[0]
         except:
-            artist = ''
+            artist = 'unknow'
         try:
             img_data = audio['APIC:'].data
         except:
@@ -36,15 +36,15 @@ def player_load(filename):
         try:
             title = audio['title'][0]
         except:
-            title = ''
+            title = filename.split('/')[-1].split('.')[0]
         try:
             album = audio['album'][0]
         except:
-            album = ''
+            album = 'unknow'
         try:
             artist = audio['artist'][0]
         except:
-            artist = ''
+            artist = 'unknow'
         pics = audio.pictures
         for p in pics:
             if p.type == 3:  # front cover
@@ -57,20 +57,26 @@ def player_load(filename):
         
         print('*****wave*****')
         audio = WAVE(filename)
-        try:
-            title = audio['title'][0]
-        except:
-            title = ''
+
+        title = filename.split('/')[-1].split('.')[0]
         try:
             album = audio['album'][0]
         except:
-            album = ''
+            album = 'unknow'
         try:
             artist = audio['artist'][0]
         except:
-            artist = ''
+            artist = 'unknow'
         img_data = ''
         length = audio.info.length
+        return [title, artist, album,img_data,length]
+    else:
+        print('*****unknow*****')
+        title = filename.split('/')[-1].split('.')[0]
+        album = 'unknow'
+        artist = 'unknow'
+        img_data = None
+        length = None
         return [title, artist, album,img_data,length]
 
 
