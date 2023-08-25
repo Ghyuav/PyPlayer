@@ -1,10 +1,13 @@
 from app import *
 from tkinter.ttk import *
 from ttkbootstrap import Style
-from tkinter import filedialog, StringVar, messagebox,Toplevel
+from tkinter import filedialog, StringVar, messagebox, Toplevel
 from math import floor
 from PIL import Image, ImageTk
 from os import startfile
+from json import dumps
+
+
 style = Style()
 window = style.master
 
@@ -57,46 +60,51 @@ def window_update():
 
 def playlist_manage():
     global playlist, playing_num
-    load_file(playlist[0])
+    print('list:'+str(playlist))
+
     playing_num = 0
+    load_file(playlist[playing_num])
 
 
 def playnext():
     global playing_num, playlist, play_progress
-    play_progress = 0
-    playing_num += 1
-    try:
-        load_file(playlist[playing_num])
-    except IndexError as e:
-        if str(e) == 'list index out of range':
-            pass  # 列表播放完了
+    if playing_num+1 > len(playlist):
+            pass  # 没有下一个了
+    else:
+        playing_num += 1
+        play_progress = 0
+        try:
+            load_file(playlist[playing_num])
+        except:
+            playing_num -= 1
 
 
 def playlast():
     global playing_num, playlist, play_progress
-    play_progress = 0
-    playing_num -= 1
-    try:
-        load_file(playlist[playing_num])
-    except IndexError as e:
-        if str(e) == 'list index out of range':
-            pass  # 列表播放完了
+    if playing_num-1 < 0:
+        print('no last') # 没有上一个了
+    else:
+        playing_num -= 1
+        play_progress = 0
+        try:
+            load_file(playlist[playing_num],if_last=1)
+        except:
+            playing_num += 1
 
 
 def open_file():
     global length, play_progress, playlist
     playlist = list(filedialog.askopenfilenames())
     playlist_manage()
+    if settings['autoplay'] == "False":  # 如果没启用自动播放，那就在播放后立即暂停
+        mixer.music.pause()
 
 
-def load_file(path=''):
-    global length, play_progress, photo, pos_Scale, time_Label
+def load_file(path='',if_last=''):
+    global length, play_progress, photo, pos_Scale, time_Label,playing_num
 
     try:
         data = player_load(path)
-    except:
-        messagebox.showerror('标题', '不支持的类型:'+path.split('.')[-1]+',切换到下一首')
-    try:  # 若播放不了则不支持播放，直接跳过（有点草率，之后再来优化）
         if data[0]:
             title_str.set(data[0])
             window.title(f'{data[0]} - PyPlayer')
@@ -128,7 +136,10 @@ def load_file(path=''):
         play()
 
     except:
-        playnext()
+        if if_last:
+            playlast()
+        else:
+            playnext()
 
 
 def play():
@@ -167,27 +178,32 @@ def pause():
         else:
             play()
 
-def change_theme():
+
+def save_settings():
     global settings
     style.theme_use(theme_name.get())
     settings['theme'] = theme_name.get()
-    with open('settings.json','w') as f:
-        f.write(str(settings))
-def setting():
-    global theme_Combobox,theme_name
-    setting_window = Toplevel()
-    setting_window.geometry('400x200')
-    theme_name = StringVar()
-    Label(setting_window,text='选择一个主题: ').pack(side='left')
-    theme_Combobox = Combobox(setting_window,state="readonly",textvariable=theme_name,values=style.theme_names())
-    theme_name.set(settings["theme"])
-    theme_Combobox.pack(side='left',fill='x')
-    theme_Combobox.bind('<<ComboboxSelected>>',lambda a:change_theme())
+    settings['autoplay'] = autoplay_str.get()
+    with open('settings.json', 'w') as f:
+        f.write(str(dumps(settings)))
+    setting_window.withdraw()
+
+
+def show_setting_window():
+    setting_window.deiconify() # 显示设置窗口
+
 
 title_str = StringVar()
 artist_str = StringVar()
 album_str = StringVar()
 time_str = StringVar()
+autoplay_str = StringVar()
+
+with open('settings.json', 'r') as f:
+    settings = eval(f.read())
+
+f = open('song.png', 'w')
+f.close()
 
 info_Frame = Frame(window)
 buttons_Frame = Frame(window)
@@ -202,7 +218,7 @@ album_Label = Label(info_Frame, textvariable=album_str, font=('微软雅黑', 15
 ask_file_Button = Button(buttons_Frame, text="打开文件",
                          bootstyle=('primary', 'outline'), command=open_file)
 setting_Button = Button(buttons_Frame, text="选项",
-                         bootstyle=('primary', 'outline'), command=setting)
+                        bootstyle=('primary', 'outline'), command=show_setting_window)
 pause_Button = Button(buttons_Frame, text='⏯️',
                       bootstyle=('primary', 'outline'), command=pause)
 next_Button = Button(buttons_Frame, text='⏭️',
@@ -228,17 +244,35 @@ title_Label.pack(pady=5)
 info_Frame.pack()
 
 
-
 pos_Scale.bind("<Button-1>", lambda a: click())
 pos_Scale.bind("<ButtonRelease-1>", lambda a: release())
 img_Label.bind("<Double-Button-1>", lambda a: startfile('song.png'))
 img_Label.bind("<Button-3>", lambda a: startfile('song.png'))
 window_update()
 
-f = open('song.png','w')
-f.close()
-with open('settings.json','r') as f:
-    settings = eval(f.read())
+# 设置窗口
+setting_window = Toplevel()
+setting_window.geometry('400x200')
+setting_window.title('选项')
+theme_name = StringVar()
+theme_Frame = Frame(setting_window)
+theme_Frame.pack(fill='x')
+autoplay_Frame = Frame(setting_window)
+autoplay_Frame.pack(fill='x')
+Label(theme_Frame, text='选择一个主题: ').pack(side='left')
+theme_Combobox = Combobox(theme_Frame, state="readonly",
+                          textvariable=theme_name, values=style.theme_names())
+theme_name.set(settings["theme"])
+theme_Combobox.pack(side='left', fill='x')
+autoplay_str.set(settings["autoplay"])
+Label(autoplay_Frame, text='打开文件后自动播放: ').pack(side='left')
+autoplay_Button = Checkbutton(autoplay_Frame, bootstyle="round-toggle",
+                              onvalue="True", offvalue="False", variable=autoplay_str)
+autoplay_Button.pack(side='left', fill='x')
+Button(setting_window, text="保存", command=save_settings).pack(side='bottom')
+setting_window.withdraw()
+
 
 style.theme_use(settings["theme"])
+
 window.mainloop()
