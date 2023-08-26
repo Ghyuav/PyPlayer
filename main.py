@@ -1,11 +1,12 @@
 from app import *
 from tkinter.ttk import *
 from ttkbootstrap import Style
-from tkinter import filedialog, StringVar, messagebox, Toplevel
+from tkinter import filedialog, StringVar, Toplevel
 from math import floor
 from PIL import Image, ImageTk
 from os import startfile
 from json import dumps
+from time import sleep
 
 
 style = Style()
@@ -27,7 +28,27 @@ playlist = []
 
 mixer.music.set_endevent()
 
-
+class messagebox():
+    def show(self,mode,text):
+        info = Toplevel()
+        info.attributes('-alpha',1)
+        def set_position():
+            info.geometry(f'+{self.winfo_x()+int(self.winfo_width()/2)}+{self.winfo_y()+30}')
+            info.after(10,set_position)
+        def destroy():
+            for i in range(10):
+                info.attributes('-alpha',1-(i+1)/10)
+                sleep(0.01)
+                info.update()
+        info.overrideredirect(True)
+        info.attributes('-topmost', 'true')
+        Label(info,text=text,bootstyle=f"inverse-{mode}").pack()
+        set_position()
+        for i in range(10):
+            info.attributes('-alpha',(i+1)/10)
+            sleep(0.01)
+            info.update()
+        info.after(2000,destroy)
 def window_update():
     global length, if_clicking, play_progress, time_str
 
@@ -60,7 +81,6 @@ def window_update():
 
 def playlist_manage():
     global playlist, playing_num
-    print('list:'+str(playlist))
 
     playing_num = 0
     load_file(playlist[playing_num])
@@ -68,8 +88,8 @@ def playlist_manage():
 
 def playnext():
     global playing_num, playlist, play_progress
-    if playing_num+1 > len(playlist):
-            pass  # 没有下一个了
+    if playing_num+1 > len(playlist)-1: 
+        messagebox.show(self=window,mode='success',text='已播放至列表结尾')
     else:
         playing_num += 1
         play_progress = 0
@@ -77,12 +97,13 @@ def playnext():
             load_file(playlist[playing_num])
         except:
             playing_num -= 1
+    
 
 
 def playlast():
     global playing_num, playlist, play_progress
     if playing_num-1 < 0:
-        print('no last') # 没有上一个了
+        messagebox.show(self=window,mode='success',text='已是列表开头')
     else:
         playing_num -= 1
         play_progress = 0
@@ -94,10 +115,14 @@ def playlast():
 
 def open_file():
     global length, play_progress, playlist
-    playlist = list(filedialog.askopenfilenames())
-    playlist_manage()
-    if settings['autoplay'] == "False":  # 如果没启用自动播放，那就在播放后立即暂停
-        mixer.music.pause()
+    open_list = list(filedialog.askopenfilenames()) # 防止文件打开失败却更新了播放列表
+    if len(open_list):
+        playlist = open_list
+        playlist_manage()
+        if settings['autoplay'] == "False":  # 如果没启用自动播放，那就在播放后立即暂停
+            mixer.music.pause()
+    else:
+        messagebox.show(window,mode='danger',text='没有打开任何文件')
 
 
 def load_file(path='',if_last=''):
@@ -114,10 +139,10 @@ def load_file(path='',if_last=''):
         artist_str.set(data[1])
         album_str.set(data[2])
         try:
-            with open('song.png', 'wb') as f:
+            with open('song.jpg', 'wb') as f:
                 f.write(data[3])
 
-            img = Image.open('song.png').resize((512, 512))
+            img = Image.open('song.jpg').resize((512, 512))
         except:
             img = Image.open('none.png').resize((512, 512))
         photo = ImageTk.PhotoImage(img)
@@ -135,7 +160,9 @@ def load_file(path='',if_last=''):
         play_progress = 0  # 播放进度归零
         play()
 
-    except:
+    except Exception as e:
+        
+        messagebox.show(self=window,mode='danger',text=f'播放出错: {str(e)},播放下一首')
         if if_last:
             playlast()
         else:
@@ -187,6 +214,7 @@ def save_settings():
     with open('settings.json', 'w') as f:
         f.write(str(dumps(settings)))
     setting_window.withdraw()
+    messagebox.show(window,mode='success',text='设置已保存')
 
 
 def show_setting_window():
@@ -202,7 +230,7 @@ autoplay_str = StringVar()
 with open('settings.json', 'r') as f:
     settings = eval(f.read())
 
-f = open('song.png', 'w')
+f = open('song.jpg', 'w')
 f.close()
 
 info_Frame = Frame(window)
@@ -246,8 +274,8 @@ info_Frame.pack()
 
 pos_Scale.bind("<Button-1>", lambda a: click())
 pos_Scale.bind("<ButtonRelease-1>", lambda a: release())
-img_Label.bind("<Double-Button-1>", lambda a: startfile('song.png'))
-img_Label.bind("<Button-3>", lambda a: startfile('song.png'))
+img_Label.bind("<Double-Button-1>", lambda a: startfile('song.jpg'))
+img_Label.bind("<Button-3>", lambda a: startfile('song.jpg'))
 window_update()
 
 # 设置窗口
@@ -269,8 +297,10 @@ Label(autoplay_Frame, text='打开文件后自动播放: ').pack(side='left')
 autoplay_Button = Checkbutton(autoplay_Frame, bootstyle="round-toggle",
                               onvalue="True", offvalue="False", variable=autoplay_str)
 autoplay_Button.pack(side='left', fill='x')
-Button(setting_window, text="保存", command=save_settings).pack(side='bottom')
+Button(setting_window, text="保存并关闭", command=save_settings).pack(side='bottom')
+setting_window.protocol('WM_DELETE_WINDOW',setting_window.withdraw)
 setting_window.withdraw()
+
 
 
 style.theme_use(settings["theme"])
