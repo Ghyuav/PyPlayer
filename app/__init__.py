@@ -4,10 +4,12 @@ from mutagen.flac import FLAC
 from mutagen.wave import WAVE
 
 mixer.init()
-
+chazhi = 0
 
 def player_load(filename):
+    global chazhi
     mixer.music.load(filename)
+    chazhi = 0
     if filename.split('.')[-1] == 'mp3' or filename.split('.')[-1] == 'MP3':
         print('*****mp3*****')
         audio = File(filename)
@@ -86,8 +88,15 @@ def player_play():
 
 
 def get_pos():
-    return mixer.music.get_pos()
+    return mixer.music.get_pos()+chazhi*1000
 
 
 def set_pos(arg):
+    global old_v,chazhi
+    old_v = get_pos()/1000
+    chazhi += arg-old_v
     return mixer.music.set_pos(arg)
+
+def play_end():
+    global chazhi
+    chazhi =  0
