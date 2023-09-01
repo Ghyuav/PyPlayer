@@ -1,10 +1,11 @@
 from app import *
 from tkinter.ttk import *
 from ttkbootstrap import Style
-from tkinter import filedialog, StringVar, Toplevel
+from tkinter import filedialog, StringVar, Toplevel,Frame
 from math import floor
 from PIL import Image, ImageTk
 from os import startfile
+from os.path import exists
 from json import dumps
 from time import sleep
 from platform import system as sys_platform
@@ -12,6 +13,7 @@ from subprocess import call
 from requests import get
 from random import shuffle
 from round_corner import *
+from get_color import *
 
 
 style = Style()
@@ -31,6 +33,10 @@ playing_num = 0
 playlist = []
 randomlist = []
 temp_list = []
+if_lyric = 0
+lyric_num = 0
+lyric_time = []
+lyric_text = []
 message_windows_num = 0
 
 
@@ -71,10 +77,10 @@ class messagebox():
 
 
 def window_update():
-    global length, if_clicking, if_volume_clicking, time_str, chazhi
+    global length, if_clicking, if_volume_clicking, time_str, chazhi,lyric_num
 
     def main():
-        global length, chazhi
+        global length, chazhi,lyric_num
         if if_clicking:  # 检测是否按键按下
             pass  # 按下则停止更新进度条
         else:
@@ -99,6 +105,14 @@ def window_update():
                 pause_Button.configure(image=play_photo)
                 play_end()
                 playnext()
+        if if_lyric:
+            lyric_num = 0
+            for i in lyric_time:
+                if get_pos() > i*1000:
+                    lyric_num = lyric_time.index(i)
+                else:
+                    lyric_Label.configure(text=lyric_text[lyric_num])
+
     main()
 
 
@@ -187,8 +201,28 @@ def open_file(mode=''):
 
 
 def load_file(path='', if_last=''):
-    global length, photo, pos_Scale, time_Label, total_time_Label, playing_num
+    global length, photo, pos_Scale, time_Label, total_time_Label, playing_num,if_lyric,lyric_time,lyric_text
     name = ''
+    lyric_path = path[0:len(path)-len(path.split('.')[-1])]+'lrc'
+    if exists(lyric_path):
+        if_lyric = 1
+        lyric_time = []
+        lyric_text = []
+        with open(lyric_path,'r',encoding='utf-8') as f:
+            lyric_data = f.read().split('\n')
+        for i in lyric_data:
+            if i:
+                if i.split(']')[-1]:
+                    lyric_text.append(i.split(']')[-1])
+                    try:
+                        lyric_time.append(int(i.split(']')[0].split('[')[-1].split(':')[0])*60+float(i.split(']')[0].split('[')[-1].split(':')[-1]))
+                    except:
+                        pass
+    else:
+        if_lyric = 0
+        lyric_Label.configure(text='')
+
+
     if path[0:4] == 'http':
         mixer.music.unload()
         f = open('temp', 'wb')
@@ -213,8 +247,13 @@ def load_file(path='', if_last=''):
                 f.write(data[3])
 
             img = Image.open('song.jpg').resize((400, 400))
+            if autocolor_str.get() == 'True':
+                color = get_dominant_colors(img)
+                for i in [window,title_Label,artist_Label,album_Label,img_Label,time_Label,total_time_Label,playing_num_Label,info_Frame,time_Frame,buttons_Frame,volume_up_Lable,volume_down_Lable,divide_point]:
+                    i.configure(background=color)
             img = circle_corner(img, 20)
-        except:
+        except Exception as e:
+            print(e)
             img = Image.open('none.png').resize((400, 400))
             img = circle_corner(img, 20)
         photo = ImageTk.PhotoImage(img)
@@ -299,6 +338,7 @@ def save_settings():
     style.theme_use(theme_name.get())
     settings['theme'] = theme_name.get()
     settings['autoplay'] = autoplay_str.get()
+    settings['autocolor'] = autocolor_str.get()
     with open('settings.json', 'w') as f:
         f.write(str(dumps(settings)))
     setting_window.withdraw()
@@ -339,6 +379,7 @@ album_str = StringVar()
 theme_name = StringVar()
 time_str = StringVar()
 autoplay_str = StringVar()
+autocolor_str = StringVar()
 randomplay_str = StringVar()
 
 with open('settings.json', 'r') as f:
@@ -368,7 +409,9 @@ photo = ImageTk.PhotoImage(img)
 img_Label = Label(window, image=photo)
 title_Label = Label(window, textvariable=title_str, font=('微软雅黑', 25))
 artist_Label = Label(info_Frame, textvariable=artist_str, font=('微软雅黑', 15))
+divide_point = Label(info_Frame, text='•', font=('微软雅黑', 25))
 album_Label = Label(info_Frame, textvariable=album_str, font=('微软雅黑', 15))
+lyric_Label = Label(window,text='',font=('微软雅黑', 20))
 time_Label = Label(time_Frame, textvariable=time_str, font=('微软雅黑', 10))
 playing_num_Label = Label(time_Frame, text='/', font=('微软雅黑', 10))
 total_time_Label = Label(time_Frame, text='00:00', font=('微软雅黑', 10))
@@ -381,9 +424,9 @@ next_Button = Button(buttons_Frame, image=next_photo,
                      bootstyle=('primary'), command=playnext)
 random_Button = Checkbutton(buttons_Frame,bootstyle="toolbutton", image=random_photo,onvalue="True", offvalue="False", variable=randomplay_str,command=random_play)
 setting_Button = Button(buttons_Frame, text="选项",
-                        bootstyle=('primary', 'outline'), command=show_setting_window)
+                        bootstyle=('primary'), command=show_setting_window)
 ask_file_Button = Button(buttons_Frame, text="打开文件",
-                         bootstyle=('primary', 'outline'), command=open_file)
+                         bootstyle=('primary'), command=open_file)
 volume_up_Lable = Label(buttons_Frame, text='🔊', font=('微软雅黑', 15))
 volume_Scale = Scale(buttons_Frame, from_=0, to=100, bootstyle="primary")
 volume_down_Lable = Label(buttons_Frame, text='🔉', font=('微软雅黑', 15))
@@ -407,9 +450,10 @@ time_Frame.pack(side='bottom', fill='x', pady=5)
 img_Label.pack(side='left', pady=10, padx=20)
 title_Label.pack(pady=5)
 artist_Label.pack(side='left', fill='x', padx=5, pady=5)
-Label(info_Frame, text='•', font=('微软雅黑', 25)).pack(side='left')
+divide_point.pack(side='left')
 album_Label.pack(side='left', fill='x', padx=5, pady=5)
 info_Frame.pack(pady=5)
+lyric_Label.pack(anchor='center',expand=True)
 
 # 设置窗口
 setting_window = Toplevel()
@@ -418,17 +462,17 @@ setting_window.title('选项')
 setting_window.iconbitmap(r'ico.ico')
 theme_Frame = Frame(setting_window)
 theme_Frame.pack(fill='x')
-autoplay_Frame = Frame(setting_window)
-autoplay_Frame.pack(fill='x')
 Label(theme_Frame, text='选择一个主题: ').pack(side='left')
 theme_Combobox = Combobox(theme_Frame, state="readonly",
                           textvariable=theme_name, values=style.theme_names())
 theme_name.set(settings["theme"])
 theme_Combobox.pack(side='left', fill='x')
-Label(autoplay_Frame, text='打开文件后自动播放: ').pack(side='left')
-autoplay_Button = Checkbutton(autoplay_Frame, bootstyle="round-toggle",
+autoplay_Button = Checkbutton(setting_window,text='打开文件后自动播放', bootstyle="round-toggle",
                               onvalue="True", offvalue="False", variable=autoplay_str)
-autoplay_Button.pack(side='left', fill='x')
+autocolor_Button = Checkbutton(setting_window,text='打开文件后自动根据封面更改背景颜色', bootstyle="round-toggle",
+                              onvalue="True", offvalue="False", variable=autocolor_str)
+autoplay_Button.pack(fill='x')
+autocolor_Button.pack(fill='x')
 Button(setting_window, text="保存并关闭", command=save_settings).pack(side='bottom')
 Label(setting_window, text='Made by Haoyu').pack(side='bottom')
 setting_window.protocol('WM_DELETE_WINDOW', setting_window.withdraw)
@@ -446,8 +490,9 @@ ask_file_Button.bind("<Button-3>", lambda a: open_file(mode=1))
 
 
 style.theme_use(settings["theme"])
-volume_Scale.set(settings['volume'])
+volume_Scale.set(settings["volume"])
 autoplay_str.set(settings["autoplay"])
+autocolor_str.set(settings["autocolor"])
 randomplay_str.set('False')
 pause_Button['state'] = 'disable'
 next_Button['state'] = 'disable'
