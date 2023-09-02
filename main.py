@@ -15,13 +15,12 @@ from random import shuffle
 from round_corner import *
 from get_color import *
 
-
 style = Style()
 window = style.master
 
 window.title('Player')
 window.iconbitmap(r'ico.ico')
-window.state('zoomed')
+# window.state('zoomed ')
 window.geometry('1200x650')
 
 
@@ -107,12 +106,13 @@ def window_update():
                 playnext()
         if if_lyric:
             lyric_num = 0
+            lyric_show = ''
             for i in lyric_time:
                 if get_pos() > i*1000:
                     lyric_num = lyric_time.index(i)
-                else:
-                    lyric_Label.configure(text=lyric_text[lyric_num])
-
+            for c in [a for a in range(len(lyric_time)) if lyric_time[a]==lyric_time[lyric_num]]:
+                lyric_show += lyric_text[c]+'\n'
+            lyric_Label.configure(text=lyric_show)
     main()
 
 
@@ -120,7 +120,6 @@ def playlist_manage():
     global playlist, playing_num, playing_num_Label
     playing_num = 0
     playing_num_Label.configure(text=f'{playing_num+1}/{len(playlist)}')
-    print(playlist,randomlist)
     load_file(playlist[playing_num])
 
 
@@ -132,10 +131,7 @@ def playnext():
     else:
         playing_num += 1
         try:
-            print(type(randomplay_str.get()))
             if randomplay_str.get() == 'True':
-                print(randomplay_str.get())
-                print(randomlist)
                 load_file(randomlist[playing_num])
             else:
                 load_file(playlist[playing_num])
@@ -212,12 +208,11 @@ def load_file(path='', if_last=''):
             lyric_data = f.read().split('\n')
         for i in lyric_data:
             if i:
-                if i.split(']')[-1]:
+                try:
+                    lyric_time.append(int(i.split(']')[0].split('[')[-1].split(':')[0])*60+float(i.split(']')[0].split('[')[-1].split(':')[-1]))
                     lyric_text.append(i.split(']')[-1])
-                    try:
-                        lyric_time.append(int(i.split(']')[0].split('[')[-1].split(':')[0])*60+float(i.split(']')[0].split('[')[-1].split(':')[-1]))
-                    except:
-                        pass
+                except:
+                    pass
     else:
         if_lyric = 0
         lyric_Label.configure(text='')
@@ -249,11 +244,10 @@ def load_file(path='', if_last=''):
             img = Image.open('song.jpg').resize((400, 400))
             if autocolor_str.get() == 'True':
                 color = get_dominant_colors(img)
-                for i in [window,title_Label,artist_Label,album_Label,img_Label,time_Label,total_time_Label,playing_num_Label,info_Frame,time_Frame,buttons_Frame,volume_up_Lable,volume_down_Lable,divide_point]:
+                for i in [window,title_Label,artist_Label,album_Label,img_Label,time_Label,total_time_Label,playing_num_Label,info_Frame,time_Frame,buttons_Frame,volume_up_Lable,volume_down_Lable,divide_point,lyric_Label]:
                     i.configure(background=color)
             img = circle_corner(img, 20)
         except Exception as e:
-            print(e)
             img = Image.open('none.png').resize((400, 400))
             img = circle_corner(img, 20)
         photo = ImageTk.PhotoImage(img)
@@ -398,6 +392,10 @@ next_img = Image.open(r'icon/next.png').resize((20,20))
 next_photo = ImageTk.PhotoImage(next_img)
 random_img = Image.open(r'icon/random.png').resize((20,20))
 random_photo = ImageTk.PhotoImage(random_img)
+open_img = Image.open(r'icon/open.png').resize((20,20))
+open_photo = ImageTk.PhotoImage(open_img)
+setting_img = Image.open(r'icon/setting.png').resize((20,20))
+setting_photo = ImageTk.PhotoImage(setting_img)
 
 
 info_Frame = Frame(window)
@@ -411,7 +409,7 @@ title_Label = Label(window, textvariable=title_str, font=('微软雅黑', 25))
 artist_Label = Label(info_Frame, textvariable=artist_str, font=('微软雅黑', 15))
 divide_point = Label(info_Frame, text='•', font=('微软雅黑', 25))
 album_Label = Label(info_Frame, textvariable=album_str, font=('微软雅黑', 15))
-lyric_Label = Label(window,text='',font=('微软雅黑', 20))
+lyric_Label = Label(window,text='',font=('微软雅黑', 20),justify='center')
 time_Label = Label(time_Frame, textvariable=time_str, font=('微软雅黑', 10))
 playing_num_Label = Label(time_Frame, text='/', font=('微软雅黑', 10))
 total_time_Label = Label(time_Frame, text='00:00', font=('微软雅黑', 10))
@@ -423,9 +421,9 @@ pause_Button = Button(buttons_Frame, image=play_photo,
 next_Button = Button(buttons_Frame, image=next_photo,
                      bootstyle=('primary'), command=playnext)
 random_Button = Checkbutton(buttons_Frame,bootstyle="toolbutton", image=random_photo,onvalue="True", offvalue="False", variable=randomplay_str,command=random_play)
-setting_Button = Button(buttons_Frame, text="选项",
+setting_Button = Button(buttons_Frame,image=setting_photo,
                         bootstyle=('primary'), command=show_setting_window)
-ask_file_Button = Button(buttons_Frame, text="打开文件",
+ask_file_Button = Button(buttons_Frame, image=open_photo,
                          bootstyle=('primary'), command=open_file)
 volume_up_Lable = Label(buttons_Frame, text='🔊', font=('微软雅黑', 15))
 volume_Scale = Scale(buttons_Frame, from_=0, to=100, bootstyle="primary")

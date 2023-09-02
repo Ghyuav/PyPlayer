@@ -18,9 +18,6 @@ def get_dominant_colors(img):
         "P", palette=Image.ADAPTIVE, colors=1
     )  
 	
-	# 10个主要颜色的图像
-
-    # 找到主要的颜色
     palette = result.getpalette()
     color_counts = sorted(result.getcolors(), reverse=True)
 
