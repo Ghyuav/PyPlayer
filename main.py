@@ -1,14 +1,14 @@
 from app import *
 from tkinter.ttk import *
 from ttkbootstrap import Style
-from tkinter import filedialog, StringVar, Toplevel,Frame
+from tkinter import filedialog, StringVar, Toplevel,Frame,Menu
 from math import floor
 from PIL import Image, ImageTk
-from os import startfile
 from os.path import exists
 from json import dumps
 from time import sleep
 from platform import system as sys_platform
+from sys import argv
 from subprocess import call
 from requests import get
 from random import shuffle
@@ -37,6 +37,7 @@ lyric_num = 0
 lyric_time = []
 lyric_text = []
 message_windows_num = 0
+fullscreen_state = False
 
 
 mixer.music.set_endevent()
@@ -158,7 +159,7 @@ def playlast():
         playing_num_Label.configure(text=f'{playing_num+1}/{len(playlist)}')
 
 
-def open_file(mode=''):
+def open_file(mode='',argvlist=''):
     global length, playlist,randomlist,temp_list
 
     def set():
@@ -192,7 +193,11 @@ def open_file(mode=''):
         close_Button.pack()
     else:
         global open_list
-        open_list = list(filedialog.askopenfilenames())
+        if argvlist:
+            del argvlist[0]
+            open_list = argvlist
+        else:
+            open_list = list(filedialog.askopenfilenames())
         set()
 
 
@@ -244,7 +249,7 @@ def load_file(path='', if_last=''):
             img = Image.open('song.jpg').resize((400, 400))
             if autocolor_str.get() == 'True':
                 color = get_dominant_colors(img)
-                for i in [window,title_Label,artist_Label,album_Label,img_Label,time_Label,total_time_Label,playing_num_Label,info_Frame,time_Frame,buttons_Frame,volume_up_Lable,volume_down_Lable,divide_point,lyric_Label]:
+                for i in [window,title_Label,artist_Label,album_Label,img_Label,time_Label,total_time_Label,playing_num_Label,info_Frame,time_Frame,buttons_Frame,volume_up_Label,volume_down_Label,divide_point,lyric_Label]:
                     i.configure(background=color)
             img = circle_corner(img, 20)
         except Exception as e:
@@ -315,16 +320,17 @@ def release():
 
 
 def pause():
-    if mixer.music.get_busy():
-        mixer.music.pause()
-        pause_Button.configure(image=play_photo)
-    else:
-        mixer.music.unpause()
-        pause_Button.configure(image=pause_photo)
+    if pause_Button['state'] != 'disable':
         if mixer.music.get_busy():
-            pass
+            mixer.music.pause()
+            pause_Button.configure(image=play_photo)
         else:
-            play()
+            mixer.music.unpause()
+            pause_Button.configure(image=pause_photo)
+            if mixer.music.get_busy():
+                pass
+            else:
+                play()
 
 
 def save_settings():
@@ -351,11 +357,17 @@ def show_setting_window():
 
 
 def start_img(fileDir):
-    platform = sys_platform()
-    if platform == 'Linux':
-        call(['xdg-open', fileDir])
+    global pause_Button
+    print(pause_Button['state'])
+    if pause_Button['state'] == 'disable':
+        messagebox.show(window,'warning','没有播放的歌曲',message_windows_num)
     else:
-        startfile(fileDir)
+        platform = sys_platform()
+        if platform == 'Linux':
+            call(['xdg-open', fileDir])
+        else:
+            from os import startfile
+            startfile(fileDir)
 
 def random_play():
     global randomlist,playlist,temp_list,playing_num
@@ -366,6 +378,19 @@ def random_play():
         playlist = temp_list
         playing_num = playlist.index(randomlist[playing_num])
 
+def rightkey(event):
+    menu.post(event.x_root,event.y_root)
+
+def fullscreen():
+    global fullscreen_state
+    if fullscreen_state:
+        window.attributes("-fullscreen", 0)
+        window.attributes("-topmost", 0) 
+        fullscreen_state = False
+    else:
+        window.attributes("-fullscreen", 1)
+        window.attributes("-topmost", 0)
+        fullscreen_state = True
 
 title_str = StringVar()
 artist_str = StringVar()
@@ -425,9 +450,9 @@ setting_Button = Button(buttons_Frame,image=setting_photo,
                         bootstyle=('primary'), command=show_setting_window)
 ask_file_Button = Button(buttons_Frame, image=open_photo,
                          bootstyle=('primary'), command=open_file)
-volume_up_Lable = Label(buttons_Frame, text='🔊', font=('微软雅黑', 15))
+volume_up_Label = Label(buttons_Frame, text='🔊', font=('微软雅黑', 15))
 volume_Scale = Scale(buttons_Frame, from_=0, to=100, bootstyle="primary")
-volume_down_Lable = Label(buttons_Frame, text='🔉', font=('微软雅黑', 15))
+volume_down_Label = Label(buttons_Frame, text='🔉', font=('微软雅黑', 15))
 
 
 last_Button.pack(side='left', fill='x', padx=20, pady=5)
@@ -436,9 +461,9 @@ next_Button.pack(side='left', fill='x', padx=20, pady=5)
 random_Button.pack(side='left', fill='x', padx=20, pady=5)
 setting_Button.pack(side='right', fill='x', padx=5, pady=5)
 ask_file_Button.pack(side='right', fill='x', padx=5, pady=5)
-volume_up_Lable.pack(side='right')
+volume_up_Label.pack(side='right')
 volume_Scale.pack(side='right', padx=5, pady=5)
-volume_down_Lable.pack(side='right')
+volume_down_Label.pack(side='right')
 buttons_Frame.pack(side='bottom', fill='both', pady=5)
 pos_Scale.pack(side='bottom', fill='x')
 time_Label.pack(side='left', anchor='w', expand='yes', padx=5)
@@ -453,38 +478,47 @@ album_Label.pack(side='left', fill='x', padx=5, pady=5)
 info_Frame.pack(pady=5)
 lyric_Label.pack(anchor='center',expand=True)
 
+# 右键菜单
+menu = Menu(window,tearoff=0)
+menu.add_command(label='打开图片',command=lambda:start_img('song.jpg'))
+menu.add_command(label='全屏',command=lambda:fullscreen())
+
+
 # 设置窗口
 setting_window = Toplevel()
 setting_window.geometry('400x200')
 setting_window.title('选项')
 setting_window.iconbitmap(r'ico.ico')
 theme_Frame = Frame(setting_window)
-theme_Frame.pack(fill='x')
-Label(theme_Frame, text='选择一个主题: ').pack(side='left')
+theme_Frame.pack(fill='x', pady=5)
+Label(theme_Frame, text='选择一个主题: ').pack(side='left', pady=5)
 theme_Combobox = Combobox(theme_Frame, state="readonly",
                           textvariable=theme_name, values=style.theme_names())
 theme_name.set(settings["theme"])
-theme_Combobox.pack(side='left', fill='x')
+theme_Combobox.pack(side='left', fill='x', pady=5)
 autoplay_Button = Checkbutton(setting_window,text='打开文件后自动播放', bootstyle="round-toggle",
                               onvalue="True", offvalue="False", variable=autoplay_str)
 autocolor_Button = Checkbutton(setting_window,text='打开文件后自动根据封面更改背景颜色', bootstyle="round-toggle",
                               onvalue="True", offvalue="False", variable=autocolor_str)
-autoplay_Button.pack(fill='x')
-autocolor_Button.pack(fill='x')
-Button(setting_window, text="保存并关闭", command=save_settings).pack(side='bottom')
-Label(setting_window, text='Made by Haoyu').pack(side='bottom')
+autoplay_Button.pack(fill='x', pady=5)
+autocolor_Button.pack(fill='x', pady=5)
+Button(setting_window, text="保存并关闭", command=save_settings).pack(side='bottom', pady=5)
 setting_window.protocol('WM_DELETE_WINDOW', setting_window.withdraw)
 setting_window.withdraw()
 
 
 pos_Scale.bind("<Button-1>", lambda a: click())
 pos_Scale.bind("<ButtonRelease-1>", lambda a: release())
+volume_up_Label.bind("<ButtonRelease-1>", lambda a: volume_release())
+volume_down_Label.bind("<ButtonRelease-1>", lambda a: volume_release())
 volume_Scale.bind("<ButtonRelease-1>", lambda a: volume_release())
-volume_down_Lable.bind("<Button-1>", lambda a: volume_Scale.set(volume_Scale.get()-10))
-volume_up_Lable.bind("<Button-1>", lambda a: volume_Scale.set(volume_Scale.get()+10))
+volume_down_Label.bind("<Button-1>", lambda a: volume_Scale.set(volume_Scale.get()-10))
+volume_up_Label.bind("<Button-1>", lambda a: volume_Scale.set(volume_Scale.get()+10))
 img_Label.bind("<Double-Button-1>", lambda a: start_img('song.jpg'))
 img_Label.bind("<Button-3>", lambda a: start_img('song.jpg'))
 ask_file_Button.bind("<Button-3>", lambda a: open_file(mode=1))
+window.bind('<Button-3>',rightkey)
+window.bind('<F11>',lambda a: fullscreen())
 
 
 style.theme_use(settings["theme"])
@@ -495,6 +529,10 @@ randomplay_str.set('False')
 pause_Button['state'] = 'disable'
 next_Button['state'] = 'disable'
 last_Button['state'] = 'disable'
+
+print(argv)
+if len(argv) > 1:
+    open_file(argvlist=argv)
 
 window_update()
 
