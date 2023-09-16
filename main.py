@@ -1,7 +1,7 @@
 from app import *
 from tkinter.ttk import *
 from ttkbootstrap import Style
-from tkinter import filedialog, StringVar, Toplevel,Frame,Menu
+from tkinter import filedialog, StringVar, Toplevel,Frame,Menu,Label
 from math import floor
 from PIL import Image, ImageTk
 from os.path import exists
@@ -38,7 +38,10 @@ lyric_time = []
 lyric_text = []
 message_windows_num = 0
 fullscreen_state = False
-
+if_hide = 0
+is_loadfile = 0
+lastClickX = 0
+lastClickY = 0
 
 mixer.music.set_endevent()
 
@@ -67,7 +70,7 @@ class messagebox():
             message_windows_num -= 1
         info.overrideredirect(True)
         info.attributes('-topmost', 'true')
-        Label(info, text=text, bootstyle=f"inverse-{mode}").pack()
+        Label(info, text=text).pack()
         set_position()
         for i in range(10):
             info.attributes('-alpha', (i+1)/10)
@@ -114,6 +117,7 @@ def window_update():
             for c in [a for a in range(len(lyric_time)) if lyric_time[a]==lyric_time[lyric_num]]:
                 lyric_show += lyric_text[c]+'\n'
             lyric_Label.configure(text=lyric_show)
+            lyric_window_Label.configure(text=lyric_show)
     main()
 
 
@@ -151,9 +155,9 @@ def playlast():
         playing_num -= 1
         try:
             if randomplay_str.get() == 'True':
-                load_file(randomlist[playing_num])
+                load_file(randomlist[playing_num],1)
             else:
-                load_file(playlist[playing_num])
+                load_file(playlist[playing_num],1)
         except:
             playing_num += 1
         playing_num_Label.configure(text=f'{playing_num+1}/{len(playlist)}')
@@ -202,7 +206,7 @@ def open_file(mode='',argvlist=''):
 
 
 def load_file(path='', if_last=''):
-    global length, photo, pos_Scale, time_Label, total_time_Label, playing_num,if_lyric,lyric_time,lyric_text
+    global length, photo, pos_Scale, time_Label, total_time_Label, playing_num,if_lyric,lyric_time,lyric_text,is_loadfile
     name = ''
     lyric_path = path[0:len(path)-len(path.split('.')[-1])]+'lrc'
     if exists(lyric_path):
@@ -221,6 +225,7 @@ def load_file(path='', if_last=''):
     else:
         if_lyric = 0
         lyric_Label.configure(text='')
+        lyric_window_Label.configure(text='')
 
 
     if path[0:4] == 'http':
@@ -249,8 +254,8 @@ def load_file(path='', if_last=''):
             img = Image.open('song.jpg').resize((400, 400))
             if autocolor_str.get() == 'True':
                 color = get_dominant_colors(img)
-                for i in [window,title_Label,artist_Label,album_Label,img_Label,time_Label,total_time_Label,playing_num_Label,info_Frame,time_Frame,buttons_Frame,volume_up_Label,volume_down_Label,divide_point,lyric_Label]:
-                    i.configure(background=color)
+                for i in [title_Label,artist_Label,album_Label,lyric_Label,lyric_window_Label]:
+                    i.configure(foreground=color)
             img = circle_corner(img, 20)
         except Exception as e:
             img = Image.open('none.png').resize((400, 400))
@@ -282,6 +287,8 @@ def load_file(path='', if_last=''):
         last_Button['state'] = 'normal'
 
         play()
+        is_loadfile = 1
+        
 
     except Exception as e:
 
@@ -392,6 +399,37 @@ def fullscreen():
         window.attributes("-topmost", 0)
         fullscreen_state = True
 
+def hide_control():
+    global if_hide,settings
+    if if_hide:
+        frame_2.pack(fill='both',expand=1)
+        if_hide = 0
+    else:
+        frame_2.pack_forget()
+        if_hide = 1
+
+def key_set_pos(num):
+    global if_clicking,is_loadfile
+    if is_loadfile:
+        if_clicking = 1
+        pos_Scale.set(pos_Scale.get()+num)
+        set_pos((pos_Scale.get()/100)*length)
+        
+        if_clicking = 0
+
+def enabled_desktop_lyric():
+    lyric_window.deiconify()
+
+
+def SaveLastClickPos(event):
+    global lastClickX, lastClickY
+    lastClickX = event.x
+    lastClickY = event.y
+
+def Dragging(event):
+    x, y = event.x - lastClickX + lyric_window.winfo_x(), event.y - lastClickY + lyric_window.winfo_y()
+    lyric_window.geometry("+%s+%s" % (x , y))
+
 title_str = StringVar()
 artist_str = StringVar()
 album_str = StringVar()
@@ -406,6 +444,7 @@ with open('settings.json', 'r') as f:
 
 f = open('song.jpg', 'w')
 f.close()
+
 
 previous_img = Image.open(r'icon/previous.png').resize((20,20))
 previous_photo = ImageTk.PhotoImage(previous_img)
@@ -423,22 +462,26 @@ setting_img = Image.open(r'icon/setting.png').resize((20,20))
 setting_photo = ImageTk.PhotoImage(setting_img)
 
 
-info_Frame = Frame(window)
-time_Frame = Frame(window)
-buttons_Frame = Frame(window)
+frame_1 = Frame(window) # 标题封面等
+frame_2 = Frame(window) # 控制按钮
+
+
+info_Frame = Frame(frame_1)
+time_Frame = Frame(frame_2)
+buttons_Frame = Frame(frame_2)
 
 img = Image.open('none.png')
 photo = ImageTk.PhotoImage(img)
-img_Label = Label(window, image=photo)
-title_Label = Label(window, textvariable=title_str, font=('微软雅黑', 25))
+img_Label = Label(frame_1, image=photo)
+title_Label = Label(frame_1, textvariable=title_str, font=('微软雅黑', 25))
 artist_Label = Label(info_Frame, textvariable=artist_str, font=('微软雅黑', 15))
 divide_point = Label(info_Frame, text='•', font=('微软雅黑', 25))
 album_Label = Label(info_Frame, textvariable=album_str, font=('微软雅黑', 15))
-lyric_Label = Label(window,text='',font=('微软雅黑', 20),justify='center')
+lyric_Label = Label(frame_1,text='',font=('微软雅黑', 20),justify='center')
 time_Label = Label(time_Frame, textvariable=time_str, font=('微软雅黑', 10))
 playing_num_Label = Label(time_Frame, text='/', font=('微软雅黑', 10))
 total_time_Label = Label(time_Frame, text='00:00', font=('微软雅黑', 10))
-pos_Scale = Scale(from_=0, to=100, bootstyle="primary")
+pos_Scale = Scale(frame_2,from_=0, to=100, bootstyle="primary")
 last_Button = Button(buttons_Frame, image=previous_photo,
                      bootstyle=('primary'), command=playlast)
 pause_Button = Button(buttons_Frame, image=play_photo,
@@ -478,10 +521,15 @@ album_Label.pack(side='left', fill='x', padx=5, pady=5)
 info_Frame.pack(pady=5)
 lyric_Label.pack(anchor='center',expand=True)
 
+frame_1.pack(fill='both',expand=1)
+frame_2.pack(fill='both',expand=1)
+
+
 # 右键菜单
 menu = Menu(window,tearoff=0)
-menu.add_command(label='打开图片',command=lambda:start_img('song.jpg'))
-menu.add_command(label='全屏',command=lambda:fullscreen())
+menu.add_command(label='隐藏/显示控制按钮(Ctrl+H)',command=lambda:hide_control())
+menu.add_command(label='全屏            (F11)',command=lambda:fullscreen())
+menu.add_command(label='启用桌面歌词',command=lambda:enabled_desktop_lyric())
 
 
 # 设置窗口
@@ -506,6 +554,18 @@ Button(setting_window, text="保存并关闭", command=save_settings).pack(side=
 setting_window.protocol('WM_DELETE_WINDOW', setting_window.withdraw)
 setting_window.withdraw()
 
+# 桌面歌词
+lyric_window = Toplevel()
+lyric_window.title('lyric')
+lyric_window_Label = Label(lyric_window,text='',font=('微软雅黑', 20),justify='center')
+lyric_window_Label.pack(anchor='center',expand=True)
+lyric_window.wm_attributes('-topmost',1)
+lyric_window.attributes ("-alpha",0.7)
+lyric_window.overrideredirect(True)
+lyric_window.protocol('WM_DELETE_WINDOW', lyric_window.withdraw)
+lyric_window.bind('<Button-1>',lambda eve: SaveLastClickPos(eve))
+lyric_window.bind('<B1-Motion>', Dragging)
+lyric_window.withdraw()
 
 pos_Scale.bind("<Button-1>", lambda a: click())
 pos_Scale.bind("<ButtonRelease-1>", lambda a: release())
@@ -519,6 +579,11 @@ img_Label.bind("<Button-3>", lambda a: start_img('song.jpg'))
 ask_file_Button.bind("<Button-3>", lambda a: open_file(mode=1))
 window.bind('<Button-3>',rightkey)
 window.bind('<F11>',lambda a: fullscreen())
+window.bind('<Control-h>',lambda a: hide_control())
+window.bind('<Control-Right>',lambda a: playnext())
+window.bind('<Control-Left>',lambda a: playlast())
+window.bind('<Alt-Right>',lambda a: key_set_pos(5))
+window.bind('<Alt-Left>',lambda a: key_set_pos(-1))
 
 
 style.theme_use(settings["theme"])
