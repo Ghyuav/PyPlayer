@@ -1,7 +1,7 @@
 from app import *
+from tkinter import *
 from tkinter.ttk import *
-from ttkbootstrap import Style
-from tkinter import filedialog, StringVar, Toplevel,Frame,Menu,Label
+from tkinter import filedialog
 from math import floor
 from PIL import Image, ImageTk
 from os.path import exists
@@ -15,8 +15,8 @@ from random import shuffle
 from round_corner import *
 from get_color import *
 
-style = Style()
-window = style.master
+
+window = Tk()
 
 window.title('Player')
 window.iconbitmap(r'ico.ico')
@@ -120,6 +120,7 @@ def window_update():
             lyric_Label.configure(text=lyric_show)
             lyric_window_Label.configure(text=lyric_show)
     main()
+
 
 def playlist_manage():
     global playlist, playing_num, playing_num_Label
@@ -344,8 +345,6 @@ def pause():
 
 def save_settings():
     global settings
-    style.theme_use(theme_name.get())
-    settings['theme'] = theme_name.get()
     settings['autoplay'] = autoplay_str.get()
     settings['autocolor'] = autocolor_str.get()
     with open('settings.json', 'w') as f:
@@ -434,7 +433,6 @@ def Dragging(event):
 title_str = StringVar()
 artist_str = StringVar()
 album_str = StringVar()
-theme_name = StringVar()
 time_str = StringVar()
 autoplay_str = StringVar()
 autocolor_str = StringVar()
@@ -482,20 +480,20 @@ lyric_Label = Label(frame_1,text='',font=('微软雅黑', 20),justify='center')
 time_Label = Label(time_Frame, textvariable=time_str, font=('微软雅黑', 10))
 playing_num_Label = Label(time_Frame, text='/', font=('微软雅黑', 10))
 total_time_Label = Label(time_Frame, text='00:00', font=('微软雅黑', 10))
-pos_Scale = Scale(frame_2,from_=0, to=100, bootstyle="primary")
+pos_Scale = Scale(frame_2,from_=0, to=100)
 last_Button = Button(buttons_Frame, image=previous_photo,
-                     bootstyle=('primary'), command=playlast)
+                      command=playlast)
 pause_Button = Button(buttons_Frame, image=play_photo,
-                      bootstyle=('primary'), command=pause)
+                       command=pause)
 next_Button = Button(buttons_Frame, image=next_photo,
-                     bootstyle=('primary'), command=playnext)
-random_Button = Checkbutton(buttons_Frame,bootstyle="toolbutton", image=random_photo,onvalue="True", offvalue="False", variable=randomplay_str,command=random_play)
+                      command=playnext)
+random_Button = Checkbutton(buttons_Frame, image=random_photo,onvalue="True", offvalue="False", variable=randomplay_str,command=random_play)
 setting_Button = Button(buttons_Frame,image=setting_photo,
-                        bootstyle=('primary'), command=show_setting_window)
+                         command=show_setting_window)
 ask_file_Button = Button(buttons_Frame, image=open_photo,
-                         bootstyle=('primary'), command=open_file)
+                          command=open_file)
 volume_up_Label = Label(buttons_Frame, text='🔊', font=('微软雅黑', 15))
-volume_Scale = Scale(buttons_Frame, from_=0, to=100, bootstyle="primary")
+volume_Scale = Scale(buttons_Frame, from_=0, to=100)
 volume_down_Label = Label(buttons_Frame, text='🔉', font=('微软雅黑', 15))
 
 
@@ -538,16 +536,9 @@ setting_window = Toplevel()
 setting_window.geometry('400x200')
 setting_window.title('选项')
 setting_window.iconbitmap(r'ico.ico')
-theme_Frame = Frame(setting_window)
-theme_Frame.pack(fill='x', pady=5)
-Label(theme_Frame, text='选择一个主题: ').pack(side='left', pady=5)
-theme_Combobox = Combobox(theme_Frame, state="readonly",
-                          textvariable=theme_name, values=style.theme_names())
-theme_name.set(settings["theme"])
-theme_Combobox.pack(side='left', fill='x', pady=5)
-autoplay_Button = Checkbutton(setting_window,text='打开文件后自动播放', bootstyle="round-toggle",
+autoplay_Button = Checkbutton(setting_window,text='打开文件后自动播放',
                               onvalue="True", offvalue="False", variable=autoplay_str)
-autocolor_Button = Checkbutton(setting_window,text='打开文件后自动根据封面更改文字颜色', bootstyle="round-toggle",
+autocolor_Button = Checkbutton(setting_window,text='打开文件后自动根据封面更改文字颜色',
                               onvalue="True", offvalue="False", variable=autocolor_str)
 autoplay_Button.pack(fill='x', pady=5)
 autocolor_Button.pack(fill='x', pady=5)
@@ -563,11 +554,11 @@ lyric_window_Label = Label(lyric_window,text='',font=('微软雅黑', 20),justif
 lyric_window_title = Frame(lyric_window)
 
 lyric_window_last_Button = Button(lyric_window_title, image=previous_photo,
-                     bootstyle=('primary'), command=playlast)
+                      command=playlast)
 lyric_window_pause_Button = Button(lyric_window_title, image=play_photo,
-                      bootstyle=('primary'), command=pause)
+                       command=pause)
 lyric_window_next_Button = Button(lyric_window_title, image=next_photo,
-                     bootstyle=('primary'), command=playnext)
+                      command=playnext)
 lyric_window_close = Button(lyric_window_title,text='X',command=lyric_window.withdraw)
 lyric_window_last_Button.pack(side='left',padx=2)
 lyric_window_pause_Button.pack(side='left',padx=2,pady=2)
@@ -606,7 +597,7 @@ lyric_window.bind('<Control-Left>',lambda a: playlast())
 lyric_window.bind('<Alt-Right>',lambda a: key_set_pos(5))
 lyric_window.bind('<Alt-Left>',lambda a: key_set_pos(-1))
 
-style.theme_use(settings["theme"])
+
 volume_Scale.set(settings["volume"])
 autoplay_str.set(settings["autoplay"])
 autocolor_str.set(settings["autocolor"])
